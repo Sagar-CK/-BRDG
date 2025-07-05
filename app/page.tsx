@@ -69,9 +69,16 @@ function SignOutButton() {
 }
 
 function Content({ liqPools }: { liqPools: LiqPool[] }) {
+  // Sort pools by current price (bridgeTokenNum / teamTokenNum) in descending order
+  const sortedPools = [...liqPools].sort((a, b) => {
+    const priceA = a.bridgeTokenNum / a.teamTokenNum;
+    const priceB = b.bridgeTokenNum / b.teamTokenNum;
+    return priceB - priceA; // Descending order (highest price first)
+  });
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-      {liqPools.map((liqPool, index) => (
+      {sortedPools.map((liqPool, index) => (
         <LiqPoolChart key={liqPool.ticker || index} liqPool={liqPool} />
       ))}
     </div>
