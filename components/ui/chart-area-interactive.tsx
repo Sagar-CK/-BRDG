@@ -30,7 +30,6 @@ import { Button } from "@/components/ui/button"
 import { api } from "@/convex/_generated/api"
 import { useMutation, useQuery } from "convex/react"
 import { Badge } from "@/components/ui/badge"
-import { toast } from "sonner"
 
 const chartConfig = {
   price: {
@@ -247,33 +246,19 @@ export function ChartAreaInteractive({ data, teamMembers, teamName, teamImages }
         </ChartContainer>
         <div className="flex flex-row gap-2 justify-evenly mt-4 items-center">
           <Input className="w-52 text-center" placeholder="$BRDG Coins" value={amount} onChange={(e) => Number(e.target.value) > 0 ? setAmount(Number(e.target.value)) : setAmount(0)} />
-          <Button
-            className="bg-green-500 text-white hover:bg-green-500/90"
-            onClick={async () => {
-              try {
-                await buyTickerMutation({
-                  ticker: teamName,
-                  amount: amount,
-                });
-                toast.success("Purchase successful!");
-              } catch (err: any) {
-                toast.error(err?.message || "Failed to buy ticker.");
-              }
-            }}
-          >
-            Buy
-          </Button>
-                    <Button variant="destructive" onClick={ async () => {
+          <Button className="bg-green-500 text-white hover:bg-green-500/90" onClick={() => {
             // buy the ticker
-            try {
-              await sellTickerMutation({
-                ticker: teamName,
-                amount: amount,
-              });
-              toast.success("Sale successful!");
-            } catch (err: any) {
-              toast.error(err?.message || "Failed to sell ticker.");
-            }
+            void buyTickerMutation({
+              ticker: teamName,
+              amount: amount,
+            });
+          }}>Buy</Button>
+                    <Button variant="destructive" onClick={() => {
+            // buy the ticker
+            void sellTickerMutation({
+              ticker: teamName,
+              amount: amount,
+            });
           }}>Sell</Button>
           <Badge  className="text-xs">Holdings: {currentHoldings ?? 0}</Badge>
         </div>
