@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button"
 import { api } from "@/convex/_generated/api"
 import { useMutation, useQuery } from "convex/react"
 import { Badge } from "@/components/ui/badge"
+import { toast } from "sonner"
 
 const chartConfig = {
   price: {
@@ -52,9 +53,19 @@ export interface ChartAreaInteractiveProps {
   teamImages: string[]
 }
 
+function isErrorWithMessage(error: unknown): error is { message: string } {
+  console.log(error)
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof (error as Record<string, unknown>)["message"] === "string"
+  );
+}
+
 export function ChartAreaInteractive({ data, teamMembers, teamName, teamImages }: ChartAreaInteractiveProps) {
   const [timeRange, setTimeRange] = React.useState("all")
-  const [amount, setAmount] = React.useState(0)
+  const [amount, setAmount] = React.useState("")
   const buyTickerMutation = useMutation(api.myFunctions.buyTicker)
   const sellTickerMutation = useMutation(api.myFunctions.sellTicker)
   const currentHoldings = useQuery(api.myFunctions.getCurrentHoldings, {
@@ -245,20 +256,56 @@ export function ChartAreaInteractive({ data, teamMembers, teamName, teamImages }
           </AreaChart>
         </ChartContainer>
         <div className="flex flex-row gap-2 justify-evenly mt-4 items-center">
-          <Input className="w-52 text-center" placeholder="$BRDG Coins" value={amount} onChange={(e) => Number(e.target.value) > 0 ? setAmount(Number(e.target.value)) : setAmount(0)} />
-          <Button className="bg-green-500 text-white hover:bg-green-500/90" onClick={() => {
+          <Input className="w-52 text-center" placeholder="$BRDG Coins" value={amount} 
+            onChange={(e) => {
+              const val = e.target.value;
+              // Allow empty string, or valid decimal number with up to 2 decimals
+              if (val === "" || /^\d*\.?\d{0,2}$/.test(val)) {
+                setAmount(val);
+              }
+            }}
+            onBlur={() => {
+              // Format to two decimals if not empty and is a valid number
+              if (amount !== "" && !isNaN(Number(amount))) {
+                setAmount(parseFloat(amount).toFixed(2));
+              }
+            }}
+          />
+          <Button className="bg-green-500 text-white hover:bg-green-500/90" onClick={async () => {
             // buy the ticker
-            void buyTickerMutation({
-              ticker: teamName,
-              amount: amount,
-            });
+            const amt = parseFloat(amount);
+            if (!isNaN(amt) && amt > 0) {
+              try {
+                await buyTickerMutation({
+                  ticker: teamName,
+                  amount: amt,
+                });
+              } catch (error: unknown) {
+                let message = "Failed to buy ticker.";
+                if (isErrorWithMessage(error)) {
+                  message = error.message;
+                }
+                toast.error(message);
+              }
+            }
           }}>Buy</Button>
-                    <Button variant="destructive" onClick={() => {
-            // buy the ticker
-            void sellTickerMutation({
-              ticker: teamName,
-              amount: amount,
-            });
+          <Button variant="destructive" onClick={async () => {
+            // sell the ticker
+            const amt = parseFloat(amount);
+            if (!isNaN(amt) && amt > 0) {
+              try {
+                await sellTickerMutation({
+                  ticker: teamName,
+                  amount: amt,
+                });
+              } catch (error: unknown) {
+                let message = "Failed to sell ticker.";
+                if (isErrorWithMessage(error)) {
+                  message = error.message;
+                }
+                toast.error(message);
+              }
+            }
           }}>Sell</Button>
           <Badge  className="text-xs">Holdings: {Math.round(currentHoldings ?? 0 * 100) / 100}</Badge>
         </div>
