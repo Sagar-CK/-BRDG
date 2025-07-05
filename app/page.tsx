@@ -21,6 +21,7 @@ interface LiqPool {
 export default function Home() {
   const ensureUserBalance = useMutation(api.myFunctions.ensureUserBalance);
   const userBalance = useQuery(api.myFunctions.getUserBalance);
+  const netWorth = useQuery(api.myFunctions.getNetWorth);
   const liqPools = useQuery(api.myFunctions.getAllLiqPools);
 
   useEffect(() => {
@@ -32,10 +33,8 @@ export default function Home() {
       <header className="sticky top-0 z-10 bg-background p-4 border-b-2 border-slate-200 dark:border-slate-800 flex flex-row justify-between items-center">
         <Image src="/bridge.png" alt="The Bridge" width={80} height={80} />
         <h1 className="text-2xl font-bold self-center">$BRDG</h1>
-        <div className="items-right">
-          <p className="text-sm">Net Worth: {userBalance?.balance ?? 0}</p>
-        </div>
         <div className="flex flex-row gap-x-4 items-center">
+          <p className="text-sm">Net Worth: {netWorth ?? 0}</p>
           <p className="text-sm">Balance: {userBalance?.balance ?? 0}</p>
           <SignOutButton />
         </div>
