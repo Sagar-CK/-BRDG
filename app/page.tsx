@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { ChartAreaInteractive } from "@/components/ui/chart-area-interactive";
+import { Trophy } from "lucide-react";
 import { useEffect } from "react";
 
 interface LiqPool {
@@ -21,7 +22,9 @@ interface LiqPool {
 export default function Home() {
   const ensureUserBalance = useMutation(api.myFunctions.ensureUserBalance);
   const userBalance = useQuery(api.myFunctions.getUserBalance);
+  const portfolioValue = useQuery(api.myFunctions.getTotalPortfolioValue);
   const liqPools = useQuery(api.myFunctions.getAllLiqPools);
+  const router = useRouter();
 
   useEffect(() => {
     ensureUserBalance();
@@ -35,7 +38,20 @@ export default function Home() {
           $BRDG
         </h1>
         <div className="flex flex-row gap-x-4 items-center">
-          <p className="text-sm">Balance: {userBalance?.balance ?? 0}</p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push("/leaderboard")}
+            className="flex items-center gap-2"
+          >
+            <Trophy className="w-4 h-4" />
+            Leaderboard
+          </Button>
+          <div className="flex flex-col text-right">
+            <p className="text-sm">Balance: {userBalance?.balance ?? 0} BRDG</p>
+            <p className="text-xs text-gray-500">Holdings: {Math.round((portfolioValue?.holdingsValue ?? 0) * 100) / 100} BRDG</p>
+            <p className="text-xs font-semibold">Total: {Math.round((portfolioValue?.totalValue ?? 0) * 100) / 100} BRDG</p>
+          </div>
           <SignOutButton />
         </div>
       </header>
@@ -92,12 +108,12 @@ function LiqPoolChart({ liqPool }: { liqPool: LiqPool }) {
   // Prepare data with visual points
   let chartData = tickerData?.filter((item) => item.bridgeTokenNum > 0).map((item) => ({
     date: new Date(item.timestamp).toISOString(),
-    price: item.bridgeTokenNum - 1,
+    price: item.bridgeTokenNum,
   })) ?? [];
 
-  // Add visual start point (price 1 at start of time)
+  // Add visual start point (initial price of 1 BRDG per team token)
   chartData = [
-    { date: "2025-06-29T00:00:00.000Z", price: 0},
+    { date: "2025-06-29T00:00:00.000Z", price: 1},
     ...chartData,
   ];
 
@@ -119,3 +135,4 @@ function LiqPoolChart({ liqPool }: { liqPool: LiqPool }) {
     />
   );
 }
+

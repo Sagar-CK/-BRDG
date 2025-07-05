@@ -295,6 +295,128 @@ export const getCurrentHoldings = query({
   },
 });
 
+export const getTotalPortfolioValue = query({
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return 0;
+
+    // Get user's BRDG balance
+    const userBalance = await ctx.db
+      .query("usersBalances")
+      .filter((q) => q.eq(q.field("userId"), userId))
+      .first();
+    const bridgeBalance = userBalance?.bridgeToken ?? 0;
+
+    // Get all user's holdings
+    const holdings = await ctx.db
+      .query("holding")
+      .filter((q) => q.eq(q.field("userId"), userId))
+      .collect();
+
+    let totalHoldingsValue = 0;
+
+    // Calculate value of each holding
+    for (const holding of holdings) {
+      const liqPool = await ctx.db.get(holding.tickerId);
+      if (liqPool) {
+        const teamTokenNum = holding.teamTokenNum;
+        
+        // Calculate how much BRDG the user would get if they sold all their team tokens
+        if (teamTokenNum > 0) {
+          const T0 = liqPool.teamTokenNum;
+          const B0 = liqPool.bridgeTokenNum;
+          const k = T0 * B0;
+          const T1 = T0 + teamTokenNum;
+          const B1 = k / T1;
+          const bridgeValue = B0 - B1;
+          totalHoldingsValue += bridgeValue;
+        }
+      }
+    }
+
+    return {
+      bridgeBalance,
+      holdingsValue: totalHoldingsValue,
+      totalValue: bridgeBalance + totalHoldingsValue,
+    };
+  },
+});
+
+export const getLeaderboard = query({
+  handler: async (ctx) => {
+    // Get all users with balances
+    const allBalances = await ctx.db.query("usersBalances").collect();
+    const leaderboard = [];
+
+    for (const userBalance of allBalances) {
+      const userId = userBalance.userId;
+      const bridgeBalance = userBalance.bridgeToken;
+
+      // Get all user's holdings
+      const holdings = await ctx.db
+        .query("holding")
+        .filter((q) => q.eq(q.field("userId"), userId))
+        .collect();
+
+      let totalHoldingsValue = 0;
+
+      // Calculate value of each holding
+      for (const holding of holdings) {
+        try {
+          const liqPool = await ctx.db.get(holding.tickerId);
+          if (liqPool && liqPool.teamTokenNum > 0 && liqPool.bridgeTokenNum > 0) {
+            const teamTokenNum = holding.teamTokenNum;
+            
+            // Calculate how much BRDG the user would get if they sold all their team tokens
+            if (teamTokenNum > 0) {
+              const T0 = liqPool.teamTokenNum;
+              const B0 = liqPool.bridgeTokenNum;
+              const k = T0 * B0;
+              const T1 = T0 + teamTokenNum;
+              
+              // Prevent division by zero
+              if (T1 > 0) {
+                const B1 = k / T1;
+                const bridgeValue = B0 - B1;
+                if (bridgeValue > 0) {
+                  totalHoldingsValue += bridgeValue;
+                }
+              }
+            }
+          }
+        } catch (error) {
+          // Skip this holding if there's an error
+          console.warn("Error calculating holding value:", error);
+        }
+      }
+
+      const totalValue = bridgeBalance + totalHoldingsValue;
+
+      // Get user info
+      let userEmail = "Anonymous";
+      try {
+        const user = await ctx.db.get(userId);
+        userEmail = user?.email ?? "Anonymous";
+      } catch (error) {
+        console.warn("Error fetching user info:", error);
+      }
+      
+      leaderboard.push({
+        userId,
+        userEmail,
+        bridgeBalance,
+        holdingsValue: totalHoldingsValue,
+        totalValue,
+      });
+    }
+
+    // Sort by total value (highest first) and return top 10
+    return leaderboard
+      .sort((a, b) => b.totalValue - a.totalValue)
+      .slice(0, 10);
+  },
+});
+
 // export const sellTicker = mutation({
 //   args: {
 //     ticker: v.string(),
