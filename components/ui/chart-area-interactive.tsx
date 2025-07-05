@@ -115,6 +115,19 @@ export function ChartAreaInteractive({ data, teamMembers, teamName, teamImages }
           <CardDescription>
             {teamMembers}
           </CardDescription>
+          {filteredData.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className={`text-2xl font-bold ${
+                filteredData.length > 1 && 
+                filteredData[filteredData.length - 1].price < filteredData[0].price 
+                  ? 'text-red-600' 
+                  : 'text-green-600'
+              }`}>
+                {filteredData[filteredData.length - 1].price.toFixed(3)} BRDG
+              </span>
+              <span className="text-sm text-gray-500">per token</span>
+            </div>
+          )}
         </div>
         <div className="flex flex-col gap-y-4 items-end">
 
@@ -260,7 +273,7 @@ export function ChartAreaInteractive({ data, teamMembers, teamName, teamImages }
               amount: amount,
             });
           }}>Sell</Button>
-          <Badge  className="text-xs">Holdings: {Math.round(currentHoldings ?? 0 * 100) / 100}</Badge>
+          <Badge  className="text-xs">Holdings: {Math.round((currentHoldings ?? 0) * 100) / 100}</Badge>
         </div>
 
       </CardContent>
