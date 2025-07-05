@@ -6,8 +6,8 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartAreaInteractive } from "@/components/ui/chart-area-interactive";
+import { Trophy } from "lucide-react";
 import { useEffect } from "react";
 
 interface LiqPool {
@@ -23,8 +23,8 @@ export default function Home() {
   const ensureUserBalance = useMutation(api.myFunctions.ensureUserBalance);
   const userBalance = useQuery(api.myFunctions.getUserBalance);
   const portfolioValue = useQuery(api.myFunctions.getTotalPortfolioValue);
-  const leaderboard = useQuery(api.myFunctions.getLeaderboard);
   const liqPools = useQuery(api.myFunctions.getAllLiqPools);
+  const router = useRouter();
 
   useEffect(() => {
     ensureUserBalance();
@@ -38,6 +38,15 @@ export default function Home() {
           $BRDG
         </h1>
         <div className="flex flex-row gap-x-4 items-center">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push("/leaderboard")}
+            className="flex items-center gap-2"
+          >
+            <Trophy className="w-4 h-4" />
+            Leaderboard
+          </Button>
           <div className="flex flex-col text-right">
             <p className="text-sm">Balance: {userBalance?.balance ?? 0} BRDG</p>
             <p className="text-xs text-gray-500">Holdings: {Math.round((portfolioValue?.holdingsValue ?? 0) * 100) / 100} BRDG</p>
@@ -47,27 +56,7 @@ export default function Home() {
         </div>
       </header>
       <main className="p-8 flex flex-col gap-8">
-        <div className="flex flex-col lg:flex-row gap-8">
-          <div className="flex-1">
-            {liqPools && <Content liqPools={liqPools} />}
-          </div>
-          <div className="lg:w-80">
-            {leaderboard ? (
-              <Leaderboard leaderboard={leaderboard} />
-            ) : (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-xl font-bold">🏆 Leaderboard</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-8 text-gray-500">
-                    <p>Loading...</p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </div>
+        {liqPools && <Content liqPools={liqPools} />}
       </main>
     </>
   );
@@ -147,57 +136,3 @@ function LiqPoolChart({ liqPool }: { liqPool: LiqPool }) {
   );
 }
 
-interface LeaderboardEntry {
-  userId: string;
-  userEmail: string;
-  bridgeBalance: number;
-  holdingsValue: number;
-  totalValue: number;
-}
-
-function Leaderboard({ leaderboard }: { leaderboard: LeaderboardEntry[] }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-xl font-bold">🏆 Leaderboard</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {leaderboard.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <p>No traders yet!</p>
-            <p className="text-sm">Be the first to start trading.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {leaderboard.map((entry, index) => (
-            <div
-              key={entry.userId}
-              className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 font-bold text-sm">
-                  {index + 1}
-                </div>
-                <div>
-                  <p className="font-medium text-sm truncate max-w-32">
-                    {entry.userEmail.includes('@') ? entry.userEmail.split('@')[0] : entry.userEmail}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    Holdings: {Math.round(entry.holdingsValue * 100) / 100}
-                  </p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="font-bold text-sm">
-                  {Math.round(entry.totalValue * 100) / 100}
-                </p>
-                <p className="text-xs text-gray-500">BRDG</p>
-              </div>
-            </div>
-          ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
