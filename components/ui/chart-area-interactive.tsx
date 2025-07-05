@@ -260,7 +260,7 @@ export function ChartAreaInteractive({ data, teamMembers, teamName, teamImages }
               amount: amount,
             });
           }}>Sell</Button>
-          <Badge  className="text-xs">Holdings: {currentHoldings ?? 0}</Badge>
+          <Badge  className="text-xs">Holdings: {Math.round(currentHoldings ?? 0 * 100) / 100}</Badge>
         </div>
 
       </CardContent>
