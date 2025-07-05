@@ -61,6 +61,7 @@ export const createLiqPool = mutation({
     } else {
       await ctx.db.patch(liqPool._id, {
         teamName: args.teamName,
+        teamImages: args.teamImages,
         active: args.active,
       });
     }
