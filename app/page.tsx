@@ -31,9 +31,10 @@ export default function Home() {
     <>
       <header className="sticky top-0 z-10 bg-background p-4 border-b-2 border-slate-200 dark:border-slate-800 flex flex-row justify-between items-center">
         <Image src="/bridge.png" alt="The Bridge" width={80} height={80} />
-        <h1 className="text-2xl font-bold self-center">
-          $BRDG
-        </h1>
+        <h1 className="text-2xl font-bold self-center">$BRDG</h1>
+        <div className="items-right">
+          <p className="text-sm">Net Worth: {userBalance?.balance ?? 0}</p>
+        </div>
         <div className="flex flex-row gap-x-4 items-center">
           <p className="text-sm">Balance: {userBalance?.balance ?? 0}</p>
           <SignOutButton />
@@ -81,25 +82,25 @@ function Content({ liqPools }: { liqPools: LiqPool[] }) {
 function LiqPoolChart({ liqPool }: { liqPool: LiqPool }) {
   const tickerData = useQuery(api.myFunctions.getTickerData, {
     ticker: liqPool.ticker,
-  }); 
+  });
   // Prepare data with visual points
-  let chartData = tickerData?.filter((item) => item.bridgeTokenNum > 0).map((item) => ({
-    date: new Date(item.timestamp).toISOString(),
-    price: item.bridgeTokenNum - 1,
-  })) ?? [];
+  let chartData =
+    tickerData
+      ?.filter((item) => item.bridgeTokenNum > 0)
+      .map((item) => ({
+        date: new Date(item.timestamp).toISOString(),
+        price: item.bridgeTokenNum - 1,
+      })) ?? [];
 
   // Add visual start point (price 1 at start of time)
-  chartData = [
-    { date: "2025-06-29T00:00:00.000Z", price: 0},
-    ...chartData,
-  ];
+  chartData = [{ date: "2025-06-29T00:00:00.000Z", price: 0 }, ...chartData];
 
   // Add visual end point (current time, latest price)
   if (chartData.length > 1) {
     const latestPrice = chartData[chartData.length - 1].price;
     chartData = [
       ...chartData,
-      { date: new Date().toISOString(), price: latestPrice},
+      { date: new Date().toISOString(), price: latestPrice },
     ];
   }
 
