@@ -81,7 +81,7 @@ function Content({ liqPools }: { liqPools: LiqPool[] }) {
 function LiqPoolChart({ liqPool }: { liqPool: LiqPool }) {
   const tickerData = useQuery(api.myFunctions.getTickerData, {
     ticker: liqPool.ticker,
-  });
+  }); 
   // Prepare data with visual points
   let chartData = tickerData?.filter((item) => item.bridgeTokenNum > 0).map((item) => ({
     date: new Date(item.timestamp).toISOString(),
