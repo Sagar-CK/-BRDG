@@ -25,7 +25,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 
 
 const chartConfig = {
@@ -146,7 +147,7 @@ export function ChartAreaInteractive({ data, teamMembers, teamName }: ChartAreaI
               content={
                 <ChartTooltipContent
                   labelFormatter={(value) => {
-                    return new Date(value).toLocaleDateString("en-US", {
+                    return new Date(value as string).toLocaleDateString("en-US", {
                       month: "short",
                       day: "numeric",
                     })
@@ -162,9 +163,13 @@ export function ChartAreaInteractive({ data, teamMembers, teamName }: ChartAreaI
               stroke="var(--color-Price)"
               stackId="a"
             />
-            <ChartLegend content={<ChartLegendContent />} />
+            <ChartLegend content={<ChartLegendContent payload={[]} verticalAlign="bottom" />} />
           </AreaChart>
         </ChartContainer>
+        <div className="flex flex-row gap-2 justify-center mt-4">
+          <Input type="number" placeholder="Bet amount" />
+          <Button variant="outline">Bet</Button>  
+        </div>
       </CardContent>
     </Card>
   )

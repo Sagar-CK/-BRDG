@@ -1,8 +1,7 @@
 "use client";
 
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
-import Link from "next/link";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -15,7 +14,7 @@ export default function Home() {
       <header className="sticky top-0 z-10 bg-background p-4 border-b-2 border-slate-200 dark:border-slate-800 flex flex-row justify-between items-center">
         <Image src="/bridge.png" alt="The Bridge" width={80} height={80} />
         <h1 className="text-2xl font-bold">
-          $BRDG
+          BRDG
         </h1>
         <SignOutButton />
       </header>
@@ -53,7 +52,7 @@ function Content() {
     useQuery(api.myFunctions.listNumbers, {
       count: 10,
     }) ?? {};
-  const addNumber = useMutation(api.myFunctions.addNumber);
+  // const addNumber = useMutation(api.myFunctions.addNumber);
 
   if (viewer === undefined || numbers === undefined) {
     return (
@@ -72,7 +71,7 @@ function Content() {
                     { date: "2025-07-03", price: 235 },
                     { date: "2025-07-04", price: 301 },
                     { date: "2025-07-05", price: 247 },
-                ]} teamMembers={["Aidan Ferguson", "Sagar Chethan Kumar", "Akshaiyram Reguram"]} teamName={"ASA"} />
+                ]} teamMembers={["Aidan Ferguson", "Sagar Chethan", "Akshaiyram Reguram"]} teamName={"AFSCKAR"} />
                 
                 {/* Shahar Dagan Team */}
                 <ChartAreaInteractive data={[
