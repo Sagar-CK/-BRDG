@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BRDG",
+  title: "$BRDG",
   description: "Polymarket meets The Bridge",
   icons: {
     icon: "/bridge.png",

@@ -15,7 +15,7 @@ export default function SignIn() {
     <div className="flex flex-col gap-8 w-96 mx-auto h-screen justify-center items-center">
       <Image src="/bridge.png" alt="The Bridge" width={200} height={200} />
       <p className="text-center">
-        Welcome to BRDG, the polymarket for the bridge.
+        Welcome to $BRDG, the polymarket for the bridge.
       </p>
       <form
         className="flex flex-col gap-2"
@@ -27,7 +27,7 @@ export default function SignIn() {
             .catch((error) => {
               setError(error.message);
             })
-            .then(() => {
+            .then(async () => {
               router.push("/");
             });
         }}
