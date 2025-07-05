@@ -310,6 +310,40 @@ export const getCurrentHoldings = query({
 //   },
 // });
 
+export const getNetWorth = query({
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return 0;
+
+    const userBalance = await ctx.db
+      .query("usersBalances")
+      .filter((q) => q.eq(q.field("userId"), userId))
+      .first();
+
+    const bridgeTokenBalance = userBalance?.bridgeToken ?? 0;
+
+    const holdings = await ctx.db
+      .query("holding")
+      .filter((q) => q.eq(q.field("userId"), userId))
+      .collect();
+
+    let holdingsValue = 0;
+    for (const holding of holdings) {
+      const liqPool = await ctx.db.get(holding.tickerId);
+      if (liqPool) {
+        const T0 = liqPool.teamTokenNum;
+        const B0 = liqPool.bridgeTokenNum;
+        const k = T0 * B0;
+        const T1 = T0 + holding.teamTokenNum;
+        const B1 = k / T1;
+        holdingsValue += B0 - B1;
+      }
+    }
+
+    return bridgeTokenBalance + holdingsValue;
+  },
+});
+
 // // You can read data from the database via a query:
 // export const listNumbers = query({
 //   // Validators for arguments.
