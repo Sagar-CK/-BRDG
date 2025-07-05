@@ -53,7 +53,7 @@ export interface ChartAreaInteractiveProps {
 }
 
 export function ChartAreaInteractive({ data, teamMembers, teamName, teamImages }: ChartAreaInteractiveProps) {
-  const [timeRange, setTimeRange] = React.useState("1hr")
+  const [timeRange, setTimeRange] = React.useState("all")
   const [amount, setAmount] = React.useState(0)
   const buyTickerMutation = useMutation(api.myFunctions.buyTicker)
   const sellTickerMutation = useMutation(api.myFunctions.sellTicker)

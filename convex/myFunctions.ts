@@ -16,7 +16,7 @@ export const ensureUserBalance = mutation({
     if (userBalance === null && userId !== null) {
       await ctx.db.insert("usersBalances", {
         userId: userId,
-        bridgeToken: 100,
+        bridgeToken: 1000,
       });
     }
     return { ok: true };
