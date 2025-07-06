@@ -2,18 +2,10 @@
 
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Trophy, Medal, Award } from "lucide-react";
-
-interface LeaderboardEntry {
-  userId: string;
-  userEmail: string;
-  bridgeBalance: number;
-  holdingsValue: number;
-  totalValue: number;
-}
 
 export default function LeaderboardPage() {
   const leaderboard = useQuery(api.myFunctions.getLeaderboard);
@@ -103,7 +95,7 @@ export default function LeaderboardPage() {
                         <div className="flex items-center gap-4">
                           {getRankIcon(index)}
                           <div>
-                            <h3 className="font-bold text-lg">
+                            <h3 className="font-bold text-black text-lg">
                               {entry.userEmail.includes('@') 
                                 ? entry.userEmail.split('@')[0] 
                                 : entry.userEmail}

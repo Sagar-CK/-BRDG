@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis, ReferenceLine } from "recharts"
 
 import {
   Card,
@@ -18,18 +18,12 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { api } from "@/convex/_generated/api"
 import { useMutation, useQuery } from "convex/react"
 import { Badge } from "@/components/ui/badge"
+import { toast } from "sonner"
 
 const chartConfig = {
   price: {
@@ -46,15 +40,25 @@ export interface ChartAreaInteractiveProps {
   data: {
     date: string
     price: number
+    synthetic?: boolean
   }[]
   teamMembers: string
   teamName: string
   teamImages: string[]
 }
 
-export function ChartAreaInteractive({ data, teamMembers, teamName, teamImages }: ChartAreaInteractiveProps) {
-  const [timeRange, setTimeRange] = React.useState("all")
-  const [amount, setAmount] = React.useState(0)
+function isErrorWithMessage(error: unknown): error is { message: string } {
+  console.log(error)
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof (error as Record<string, unknown>)["message"] === "string"
+  );
+}
+
+export function ChartAreaInteractive({ data, teamMembers, teamName, teamImages, showBuySellLines = true, timeRange = "all" }: ChartAreaInteractiveProps & { showBuySellLines?: boolean, timeRange?: string }) {
+  const [amount, setAmount] = React.useState("")
   const buyTickerMutation = useMutation(api.myFunctions.buyTicker)
   const sellTickerMutation = useMutation(api.myFunctions.sellTicker)
   const currentHoldings = useQuery(api.myFunctions.getCurrentHoldings, {
@@ -130,26 +134,6 @@ export function ChartAreaInteractive({ data, teamMembers, teamName, teamImages }
           )}
         </div>
         <div className="flex flex-col gap-y-4 items-end">
-
-        <Select  value={timeRange} onValueChange={setTimeRange}>
-          <SelectTrigger
-            className="hidden w-[160px] rounded-lg sm:ml-auto sm:flex text-xs"
-            aria-label="Select a value"
-          >
-            <SelectValue placeholder="All time" className="text-xs" />
-          </SelectTrigger>
-          <SelectContent className="rounded-xl ">
-            <SelectItem value="1hr" className="rounded-lg text-xs">
-              Last 1 hour
-            </SelectItem>
-            <SelectItem value="24hrs" className="rounded-lg text-xs">
-              Last 24 hours
-            </SelectItem>
-            <SelectItem value="all" className="rounded-lg text-xs">
-              All time
-            </SelectItem>
-          </SelectContent>
-        </Select>
         <div className="flex flex-row gap-2 mb-1">
               {teamImages && teamImages.map((img, idx) => (
                 <img
@@ -160,7 +144,6 @@ export function ChartAreaInteractive({ data, teamMembers, teamName, teamImages }
                 />
               ))}
             </div>
-
         </div>
       </CardHeader>
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
@@ -247,6 +230,24 @@ export function ChartAreaInteractive({ data, teamMembers, teamName, teamImages }
                 />
               }
             />
+            {showBuySellLines && filteredData.map((point, idx) => {
+              if (idx === 0) return null;
+              const prev = filteredData[idx - 1];
+              // Only draw if both points are not synthetic
+              if (point.synthetic || prev.synthetic) return null;
+              const delta = point.price - prev.price;
+              if (delta === 0) return null;
+              return (
+                <ReferenceLine
+                  key={point.date}
+                  x={point.date}
+                  stroke={delta > 0 ? "#22c55e" : "#ef4444"}
+                  strokeDasharray="3 3"
+                  strokeOpacity={0.4}
+                  label={false}
+                />
+              );
+            })}
             <Area
               dataKey="price"
               type="natural"
@@ -258,20 +259,56 @@ export function ChartAreaInteractive({ data, teamMembers, teamName, teamImages }
           </AreaChart>
         </ChartContainer>
         <div className="flex flex-row gap-2 justify-evenly mt-4 items-center">
-          <Input className="w-52 text-center" placeholder="$BRDG Coins" value={amount} onChange={(e) => Number(e.target.value) > 0 ? setAmount(Number(e.target.value)) : setAmount(0)} />
-          <Button className="bg-green-500 text-white hover:bg-green-500/90" onClick={() => {
+          <Input className="w-52 text-center" placeholder="$BRDG Coins" value={amount} 
+            onChange={(e) => {
+              const val = e.target.value;
+              // Allow empty string, or valid decimal number with up to 2 decimals
+              if (val === "" || /^\d*\.?\d{0,2}$/.test(val)) {
+                setAmount(val);
+              }
+            }}
+            onBlur={() => {
+              // Format to two decimals if not empty and is a valid number
+              if (amount !== "" && !isNaN(Number(amount))) {
+                setAmount(parseFloat(amount).toFixed(2));
+              }
+            }}
+          />
+          <Button className="bg-green-500 text-white hover:bg-green-500/90" onClick={async () => {
             // buy the ticker
-            void buyTickerMutation({
-              ticker: teamName,
-              amount: amount,
-            });
+            const amt = parseFloat(amount);
+            if (!isNaN(amt) && amt > 0) {
+              try {
+                await buyTickerMutation({
+                  ticker: teamName,
+                  amount: amt,
+                });
+              } catch (error: unknown) {
+                let message = "Failed to buy ticker.";
+                if (isErrorWithMessage(error)) {
+                  message = error.message;
+                }
+                toast.error(message);
+              }
+            }
           }}>Buy</Button>
-                    <Button variant="destructive" onClick={() => {
-            // buy the ticker
-            void sellTickerMutation({
-              ticker: teamName,
-              amount: amount,
-            });
+          <Button variant="destructive" onClick={async () => {
+            // sell the ticker
+            const amt = parseFloat(amount);
+            if (!isNaN(amt) && amt > 0) {
+              try {
+                await sellTickerMutation({
+                  ticker: teamName,
+                  amount: amt,
+                });
+              } catch (error: unknown) {
+                let message = "Failed to sell ticker.";
+                if (isErrorWithMessage(error)) {
+                  message = error.message;
+                }
+                toast.error(message);
+              }
+            }
           }}>Sell</Button>
           <Badge  className="text-xs">Holdings: {Math.round((currentHoldings ?? 0) * 100) / 100}</Badge>
         </div>

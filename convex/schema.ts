@@ -30,4 +30,15 @@ export default defineSchema({
     bridgeTokenNum: v.number(),
     timestamp: v.number(),
   }),
+  wagers: defineTable({
+    questionId: v.id("questions"),
+    userId: v.id("users"),
+    isYes: v.boolean(),
+    amount: v.number(),
+    active: v.boolean(),
+  }),
+  questions: defineTable({
+    question: v.string(),
+    createdBy: v.id("users"),
+  }),
 });
