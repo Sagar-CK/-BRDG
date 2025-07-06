@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis, ReferenceLine } from "recharts"
 
 import {
   Card,
@@ -18,13 +18,6 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { api } from "@/convex/_generated/api"
@@ -47,6 +40,7 @@ export interface ChartAreaInteractiveProps {
   data: {
     date: string
     price: number
+    synthetic?: boolean
   }[]
   teamMembers: string
   teamName: string
@@ -63,8 +57,7 @@ function isErrorWithMessage(error: unknown): error is { message: string } {
   );
 }
 
-export function ChartAreaInteractive({ data, teamMembers, teamName, teamImages }: ChartAreaInteractiveProps) {
-  const [timeRange, setTimeRange] = React.useState("all")
+export function ChartAreaInteractive({ data, teamMembers, teamName, teamImages, showBuySellLines = true, timeRange = "all" }: ChartAreaInteractiveProps & { showBuySellLines?: boolean, timeRange?: string }) {
   const [amount, setAmount] = React.useState("")
   const buyTickerMutation = useMutation(api.myFunctions.buyTicker)
   const sellTickerMutation = useMutation(api.myFunctions.sellTicker)
@@ -141,26 +134,6 @@ export function ChartAreaInteractive({ data, teamMembers, teamName, teamImages }
           )}
         </div>
         <div className="flex flex-col gap-y-4 items-end">
-
-        <Select  value={timeRange} onValueChange={setTimeRange}>
-          <SelectTrigger
-            className="hidden w-[160px] rounded-lg sm:ml-auto sm:flex text-xs"
-            aria-label="Select a value"
-          >
-            <SelectValue placeholder="All time" className="text-xs" />
-          </SelectTrigger>
-          <SelectContent className="rounded-xl ">
-            <SelectItem value="1hr" className="rounded-lg text-xs">
-              Last 1 hour
-            </SelectItem>
-            <SelectItem value="24hrs" className="rounded-lg text-xs">
-              Last 24 hours
-            </SelectItem>
-            <SelectItem value="all" className="rounded-lg text-xs">
-              All time
-            </SelectItem>
-          </SelectContent>
-        </Select>
         <div className="flex flex-row gap-2 mb-1">
               {teamImages && teamImages.map((img, idx) => (
                 <img
@@ -171,7 +144,6 @@ export function ChartAreaInteractive({ data, teamMembers, teamName, teamImages }
                 />
               ))}
             </div>
-
         </div>
       </CardHeader>
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
@@ -258,6 +230,24 @@ export function ChartAreaInteractive({ data, teamMembers, teamName, teamImages }
                 />
               }
             />
+            {showBuySellLines && filteredData.map((point, idx) => {
+              if (idx === 0) return null;
+              const prev = filteredData[idx - 1];
+              // Only draw if both points are not synthetic
+              if (point.synthetic || prev.synthetic) return null;
+              const delta = point.price - prev.price;
+              if (delta === 0) return null;
+              return (
+                <ReferenceLine
+                  key={point.date}
+                  x={point.date}
+                  stroke={delta > 0 ? "#22c55e" : "#ef4444"}
+                  strokeDasharray="3 3"
+                  strokeOpacity={0.4}
+                  label={false}
+                />
+              );
+            })}
             <Area
               dataKey="price"
               type="natural"

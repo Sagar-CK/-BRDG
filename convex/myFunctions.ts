@@ -32,6 +32,7 @@ export const getUserBalance = query({
       .first();
     return {
       balance: userBalance?.bridgeToken ?? 0,
+      userId: userId ?? null,
     };
   },
 });
@@ -260,6 +261,7 @@ export const sellTicker = mutation({
     }
   },
 });
+
 export const getCurrentHoldings = query({
   args: {
     ticker: v.string(),
@@ -417,91 +419,153 @@ export const getLeaderboard = query({
   },
 });
 
-// export const sellTicker = mutation({
-//   args: {
-//     ticker: v.string(),
-//     amount: v.number(),
-//   },
-//   handler: async (ctx, args) => {
-//     const userId = await getAuthUserId(ctx);
+export const createQuestion = mutation({
+  args: { question: v.string()},
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+    await ctx.db.insert("questions", { question: args.question, createdBy: userId });
+  },
+});
 
-//     if (args.amount <= 0) {
-//       throw new Error("Amount must be greater than 0");
-//     }
+export const placeWager = mutation({
+  args: {
+    questionId: v.id("questions"),
+    isYes: v.boolean(),
+    amount: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+    if (args.amount <= 0) throw new Error("Amount must be greater than 0");
 
-//   },
-// });
+    // Prevent creator from betting on their own question
+    const question = await ctx.db.get(args.questionId);
+    if (!question) throw new Error("Question not found");
+    if (question.createdBy === userId) {
+      throw new Error("Creators cannot bet on their own question");
+    }
 
-// // You can read data from the database via a query:
-// export const listNumbers = query({
-//   // Validators for arguments.
-//   args: {
-//     count: v.number(),
-//   },
+    // Check user balance
+    const userBalance = await ctx.db
+      .query("usersBalances")
+      .filter((q) => q.eq(q.field("userId"), userId))
+      .first();
+    if (!userBalance || userBalance.bridgeToken < args.amount) {
+      throw new Error("Insufficient balance");
+    }
 
-//   // Query implementation.
-//   handler: async (ctx, args) => {
-//     //// Read the database as many times as you need here.
-//     //// See https://docs.convex.dev/database/reading-data.
-//     const numbers = await ctx.db
-//       .query("numbers")
-//       // Ordered by _creationTime, return most recent
-//       .order("desc")
-//       .take(args.count);
-//     const userId = await getAuthUserId(ctx);
-//     const user = userId === null ? null : await ctx.db.get(userId);
-//     return {
-//       viewer: user?.email ?? null,
-//       numbers: numbers.reverse().map((number) => number.value),
-//     };
-//   },
-// });
+    // Deduct from user
+    await ctx.db.patch(userBalance._id, {
+      bridgeToken: userBalance.bridgeToken - args.amount,
+    });
 
-// // You can write data to the database via a mutation:
-// export const addNumber = mutation({
-//   // Validators for arguments.
-//   args: {
-//     value: v.number(),
-//   },
+    // Add wager
+    await ctx.db.insert("wagers", {
+      questionId: args.questionId,
+      userId,
+      isYes: args.isYes,
+      amount: args.amount,
+      active: true,
+    });
+  },
+});
 
-//   // Mutation implementation.
-//   handler: async (ctx, args) => {
-//     //// Insert or modify documents in the database here.
-//     //// Mutations can also read from the database like queries.
-//     //// See https://docs.convex.dev/database/writing-data.
+export const getQuestionsWithMarket = query({
+  handler: async (ctx) => {
+    const questions = await ctx.db.query("questions").collect();
+    const results = [];
+    for (const q of questions) {
+      const wagers = await ctx.db
+        .query("wagers")
+        .filter((w) => w.eq(w.field("questionId"), q._id))
+        .collect();
+      const yes = wagers.filter((w) => w.isYes).reduce((sum, w) => sum + w.amount, 0);
+      const no = wagers.filter((w) => !w.isYes).reduce((sum, w) => sum + w.amount, 0);
+      const total = yes + no;
+      results.push({
+        ...q,
+        yes,
+        no,
+        yesPct: total ? (yes / total) * 100 : 0,
+        noPct: total ? (no / total) * 100 : 0,
+        total,
+      });
+    }
+    return results;
+  },
+});
 
-//     const id = await ctx.db.insert("numbers", { value: args.value });
+export const getWagersForQuestion = query({
+  args: { questionId: v.id("questions") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("wagers")
+      .filter((w) => w.eq(w.field("questionId"), args.questionId))
+      .collect();
+  },
+});
 
-//     console.log("Added new document with id:", id);
-//     // Optionally, return a value from your mutation.
-//     // return id;
-//   },
-// });
+export const getTotalWageredAmount = query({
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return 0;
+    const wagers = await ctx.db
+      .query("wagers")
+      .filter((q) => q.eq(q.field("userId"), userId))
+      .collect();
+    const totalWagered = wagers.reduce((sum, w) => sum + (w.amount ?? 0), 0);
+    return { totalWagered };
+  },
+});
 
-// You can fetch data from and send data to third-party APIs via an action:
-// export const myAction = action({
-//   // Validators for arguments.
-//   args: {
-//     first: v.number(),
-//     second: v.string(),
-//   },
+// Mutation to resolve a question and distribute payouts
+export const resolveQuestion = mutation({
+  args: {
+    questionId: v.id("questions"),
+    correctAnswer: v.boolean(), // true for yes, false for no
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+    const question = await ctx.db.get(args.questionId);
+    if (!question) throw new Error("Question not found");
+    if (question.createdBy !== userId) {
+      throw new Error("Only the creator can resolve this question");
+    }
 
-//   // Action implementation.
-//   handler: async (ctx) => {
-//     //// Use the browser-like `fetch` API to send HTTP requests.
-//     //// See https://docs.convex.dev/functions/actions#calling-third-party-apis-and-using-npm-packages.
-//     // const response = await fetch("https://api.thirdpartyservice.com");
-//     // const data = await response.json();
+    // Get all wagers for this question
+    const wagers = await ctx.db
+      .query("wagers")
+      .filter((w) => w.eq(w.field("questionId"), args.questionId))
+      .collect();
 
-//     //// Query data by running Convex queries.
-//     const data = await ctx.runQuery(api.myFunctions.listNumbers, {
-//       count: 10,
-//     });
-//     console.log(data);
+    // Mark all wagers as inactive
+    for (const wager of wagers) {
+      await ctx.db.patch(wager._id, { active: false });
+    }
 
-//     //// Write data by running Convex mutations.
-//     await ctx.runMutation(api.myFunctions.addNumber, {
-//       value: args.first,
-//     });
-//   },
-// });
+    // Calculate pools
+    const winningWagers = wagers.filter((w) => w.isYes === args.correctAnswer);
+    const losingWagers = wagers.filter((w) => w.isYes !== args.correctAnswer);
+    const winningPool = winningWagers.reduce((sum, w) => sum + w.amount, 0);
+    const losingPool = losingWagers.reduce((sum, w) => sum + w.amount, 0);
+
+    // Distribute payouts
+    for (const winner of winningWagers) {
+      // payout = their bet + (their bet / winningPool) * losingPool
+      const payout = winner.amount + (winningPool > 0 ? (winner.amount / winningPool) * losingPool : 0);
+      // Credit payout to user
+      const userBalance = await ctx.db
+        .query("usersBalances")
+        .filter((q) => q.eq(q.field("userId"), winner.userId))
+        .first();
+      if (userBalance) {
+        await ctx.db.patch(userBalance._id, {
+          bridgeToken: userBalance.bridgeToken + payout,
+        });
+      }
+    }
+  },
+});
+

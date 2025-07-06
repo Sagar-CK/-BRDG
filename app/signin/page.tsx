@@ -15,7 +15,7 @@ export default function SignIn() {
   );
 }
 
-export function SignInFormEmailLink() {
+function SignInFormEmailLink() {
   const [step, setStep] = useState<"signIn" | "linkSent">("signIn");
 
   return (
