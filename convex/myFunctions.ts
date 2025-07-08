@@ -76,7 +76,7 @@ export const getLiqPool = query({
   handler: async (ctx, args) => {
     const liqPool = await ctx.db
       .query("liqPool")
-      .filter((q) => q.eq(q.field("ticker"), args.ticker))
+      .withIndex("by_ticker", (q) => q.eq("ticker", args.ticker))
       .first();
     return liqPool;
   },
@@ -97,11 +97,14 @@ export const getTickerData = query({
     // get all history entries for the ticker
     const liqPool = await ctx.db
       .query("liqPool")
-      .filter((q) => q.eq(q.field("ticker"), args.ticker))
+      .withIndex("by_ticker", (q) => q.eq("ticker", args.ticker))
       .first();
+    if (!liqPool) {
+      throw new Error("Liquidity pool not found");
+    }
     const history = await ctx.db
       .query("history")
-      .filter((q) => q.eq(q.field("tickerId"), liqPool?._id))
+      .withIndex("by_ticker", (q) => q.eq("tickerId", liqPool?._id))
       .collect();
     return history;
   },
@@ -166,8 +169,7 @@ export const buyTicker = mutation({
         // Update holding if it exists
         const holding = await ctx.db
           .query("holding")
-          .filter((q) => q.eq(q.field("userId"), userId))
-          .filter((q) => q.eq(q.field("tickerId"), liqPool._id))
+          .withIndex("by_user_ticker", (q) => q.eq("userId", userId).eq("tickerId", liqPool._id))
           .first();
         if (holding !== null) {
           await ctx.db.patch(holding._id, {
@@ -204,10 +206,12 @@ export const sellTicker = mutation({
     if (liqPool === null) {
       throw new Error("Liquidity pool not found");
     }
+    if (!userId) {
+      throw new Error("User not found");
+    }
     const holding = await ctx.db
       .query("holding")
-      .filter((q) => q.eq(q.field("userId"), userId))
-      .filter((q) => q.eq(q.field("tickerId"), liqPool._id))
+      .withIndex("by_user_ticker", (q) => q.eq("userId", userId).eq("tickerId", liqPool._id))
       .first();
 
     if (holding === null) {
@@ -270,14 +274,14 @@ export const getCurrentHoldings = query({
     const userId = await getAuthUserId(ctx);
     const liqPool = await ctx.db
       .query("liqPool")
-      .filter((q) => q.eq(q.field("ticker"), args.ticker))
+      .withIndex("by_ticker", (q) => q.eq("ticker", args.ticker))
       .first();
+
     if (!liqPool || !userId) return -1;
 
     const holdings = await ctx.db
       .query("holding")
-      .filter((q) => q.eq(q.field("userId"), userId))
-      .filter((q) => q.eq(q.field("tickerId"), liqPool._id))
+      .withIndex("by_user_ticker", (q) => q.eq("userId", userId).eq("tickerId", liqPool._id))
       .first();
 
     const teamTokenNum = holdings?.teamTokenNum ?? 0;
@@ -312,7 +316,7 @@ export const getTotalPortfolioValue = query({
     // Get all user's holdings
     const holdings = await ctx.db
       .query("holding")
-      .filter((q) => q.eq(q.field("userId"), userId))
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .collect();
 
     let totalHoldingsValue = 0;
@@ -357,7 +361,7 @@ export const getLeaderboard = query({
       // Get all user's holdings
       const holdings = await ctx.db
         .query("holding")
-        .filter((q) => q.eq(q.field("userId"), userId))
+        .withIndex("by_user", (q) => q.eq("userId", userId))
         .collect();
 
       let totalHoldingsValue = 0;

@@ -18,25 +18,26 @@ export default defineSchema({
     teamTokenNum: v.number(),
     bridgeTokenNum: v.number(),
     teamImages: v.array(v.string()),
-  }),
+  }).index("by_ticker", ["ticker"]),
   holding: defineTable({
     userId: v.id("users"),
     tickerId: v.id("liqPool"),
     teamTokenNum: v.number(),
     bridgeTokenNum: v.number(),
-  }),
+  }).index("by_user_ticker", ["userId", "tickerId"])
+  .index("by_ticker", ["tickerId"]).index("by_user", ["userId"]),
   history: defineTable({
     tickerId: v.id("liqPool"),
     bridgeTokenNum: v.number(),
     timestamp: v.number(),
-  }),
+  }).index("by_ticker", ["tickerId"]),
   wagers: defineTable({
     questionId: v.id("questions"),
     userId: v.id("users"),
     isYes: v.boolean(),
     amount: v.number(),
     active: v.boolean(),
-  }),
+  }).index("by_question_user", ["questionId", "userId"]),
   questions: defineTable({
     question: v.string(),
     createdBy: v.id("users"),
